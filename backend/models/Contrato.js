@@ -28,8 +28,7 @@ const contratoSchema = new mongoose.Schema({
   },
   telefono: {
     type: String,
-    trim: true,
-    match: [/^[\d\s\-\+\(\)]{7,20}$/, 'Teléfono inválido']
+    trim: true
   },
   email: {
     type: String,
@@ -41,24 +40,35 @@ const contratoSchema = new mongoose.Schema({
     type: String,
     required: [true, 'El tipo de contrato es requerido'],
     enum: [
-      'Docente',
-      'No Docente',
-      'Administrativo',
-      'Abogado',
-      'Contador',
-      'Alumno Tutor',
-      'Empresa - Limpieza',
-      'Empresa - Seguridad',
-      'Empresa - Mantenimiento',
-      'Empresa - Tecnología',
-      'Empresa - Otro',
-      'Otro'
+      'Docente','No Docente','Administrativo','Abogado','Contador',
+      'Alumno Tutor','Empresa - Limpieza','Empresa - Seguridad',
+      'Empresa - Mantenimiento','Empresa - Tecnología','Empresa - Otro','Otro'
     ]
+  },
+  secretaria: {
+    type: String,
+    trim: true,
+    maxlength: [150, 'Máximo 150 caracteres']
   },
   descripcion: {
     type: String,
     trim: true,
     maxlength: [500, 'Máximo 500 caracteres']
+  },
+  importeMensual: {
+    type: Number,
+    min: [0, 'El importe no puede ser negativo'],
+    default: 0
+  },
+  cantidadMeses: {
+    type: Number,
+    min: [1, 'Debe ser al menos 1 mes'],
+    default: 1
+  },
+  importeTotal: {
+    type: Number,
+    min: [0, 'El importe no puede ser negativo'],
+    default: 0
   },
   fechaInicioContrato: {
     type: Date,
@@ -71,17 +81,11 @@ const contratoSchema = new mongoose.Schema({
   fechaVencimientoSeguro: {
     type: Date
   },
-  alertaContrato15: {
-    type: Boolean,
-    default: false
-  },
-  alertaSeguro15: {
-    type: Boolean,
-    default: false
-  },
+  alertaContrato15: { type: Boolean, default: false },
+  alertaSeguro15: { type: Boolean, default: false },
   estado: {
     type: String,
-    enum: ['Vigente', 'Por Vencer', 'Vencido', 'Renovado', 'Cancelado'],
+    enum: ['Vigente','Por Vencer','Vencido','Renovado','Cancelado'],
     default: 'Vigente'
   },
   creadoPor: {
@@ -95,7 +99,6 @@ const contratoSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Índices para búsquedas rápidas
 contratoSchema.index({ nroExpediente: 1 });
 contratoSchema.index({ apellido: 1, nombre: 1 });
 contratoSchema.index({ dni: 1 });
@@ -103,8 +106,8 @@ contratoSchema.index({ fechaVencimientoContrato: 1 });
 contratoSchema.index({ fechaVencimientoSeguro: 1 });
 contratoSchema.index({ estado: 1 });
 contratoSchema.index({ tipoContrato: 1 });
+contratoSchema.index({ secretaria: 1 });
 
-// Virtual: nombre completo
 contratoSchema.virtual('nombreCompleto').get(function() {
   return `${this.apellido}, ${this.nombre}`;
 });

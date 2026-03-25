@@ -15,10 +15,12 @@ const app = express();
 
 // ─── Seguridad ─────────────────────────────────────────────────────────────
 app.use(helmet());
+app.set('trust proxy', 1); // ← agregá esta línea
+app.use(helmet());
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
-    ? 'https://tu-dominio.com'
-    : 'http://localhost:3000',
+  ? 'https://tu-dominio.com'
+  : ['http://localhost:3000', 'http://localhost:5000'],
   credentials: true
 }));
 

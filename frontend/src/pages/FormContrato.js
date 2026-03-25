@@ -7,18 +7,59 @@ import { format } from 'date-fns';
 const TIPOS = [
   'Docente','No Docente','Administrativo','Abogado','Contador',
   'Alumno Tutor','Empresa - Limpieza','Empresa - Seguridad',
-  'Empresa - Mantenimiento','Empresa - Tecnología','Empresa - Otro','Otro'
+  'Empresa - Mantenimiento','Empresa - Tecnología','Empresa - Otro','Gimnacia Laboral','Entrenador fisico deportista','Otro'
+];
+
+const SECRETARIAS = [
+  'Rectorado',
+  'Vicerector',
+  'Secretaria General',
+  'Secretaría Académica',
+  'Secretaría de Hacienda y Administracion',
+  'Secretaría de Extensión',
+  'Secretaría de Bienestar Estudiantil',
+  'Secretaría de Infraestructura',
+  'Secretaria de Ciencia y Tecnica',
+  'Secretaria de Innovacion y Arcticulacion Tecnologica',
+  'Secretaria de Posgrado',
+  'Secretaria de Comunicacion Estrategica',
+  'Tesorería',
+  'Asesoria Legal y Técnica',
+  'Dirección de Personal',
+  'Dirección de Compras',
+  'Departamento de Pesupuesto y Liquidacion de Gastos',
+  'Departamento de Liquidacion de Haberes',
+  'Departamento de Contrataciones',
+  'Departamento de Compras',
+  'Departamente de Ciencias Basicas',
+  'Departamento de Ciencias Aplicadas y Tecnologicas',
+  'Biblioteca',
+  'Escuela de Ciencia de la Salud',
+  'Escuela de Gestion de Empresas y Economia',
+  'Escuela de Ciencias Sociales y Educacion',
+  'Escuela de Ingenieria y Ciencias Ambientales',
+  'Escuela de Medicina',
+  'UGR'
 ];
 
 const INITIAL = {
   nroExpediente: '', nombre: '', apellido: '', dni: '',
-  telefono: '', email: '', tipoContrato: '', descripcion: '',
+  telefono: '', email: '', tipoContrato: '', secretaria: '',
+  descripcion: '', importeMensual: '', cantidadMeses: '',
+  importeTotal: '',
   fechaInicioContrato: '', fechaVencimientoContrato: '', fechaVencimientoSeguro: ''
 };
 
 function formatDateInput(dateStr) {
   if (!dateStr) return '';
   return format(new Date(dateStr), 'yyyy-MM-dd');
+}
+
+function formatPesos(valor) {
+  if (!valor && valor !== 0) return '';
+  return new Intl.NumberFormat('es-AR', {
+    style: 'currency', currency: 'ARS', minimumFractionDigits: 2
+  }).format(valor);
 }
 
 // ✅ Field definido FUERA del componente principal
@@ -56,7 +97,11 @@ export default function FormContrato() {
           telefono: c.telefono || '',
           email: c.email || '',
           tipoContrato: c.tipoContrato || '',
+          secretaria: c.secretaria || '',
           descripcion: c.descripcion || '',
+          importeMensual: c.importeMensual || '',
+          cantidadMeses: c.cantidadMeses || '',
+          importeTotal: c.importeTotal || '',
           fechaInicioContrato: formatDateInput(c.fechaInicioContrato),
           fechaVencimientoContrato: formatDateInput(c.fechaVencimientoContrato),
           fechaVencimientoSeguro: formatDateInput(c.fechaVencimientoSeguro)
@@ -73,27 +118,43 @@ export default function FormContrato() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+
+    setForm(prev => {
+      const nuevo = { ...prev, [name]: value };
+
+      // Calcular importe total automáticamente
+      if (name === 'importeMensual' || name === 'cantidadMeses') {
+        const mensual = parseFloat(name === 'importeMensual' ? value : prev.importeMensual) || 0;
+        const meses = parseFloat(name === 'cantidadMeses' ? value : prev.cantidadMeses) || 0;
+        nuevo.importeTotal = mensual > 0 && meses > 0 ? (mensual * meses).toFixed(2) : '';
+      }
+
+      return nuevo;
+    });
+
     if (errores[name]) setErrores(prev => ({ ...prev, [name]: '' }));
   };
 
   const validar = () => {
-    const nuevosErrores = {};
-    if (!form.nroExpediente.trim()) nuevosErrores.nroExpediente = 'Requerido';
-    if (!form.nombre.trim()) nuevosErrores.nombre = 'Requerido';
-    if (!form.apellido.trim()) nuevosErrores.apellido = 'Requerido';
-    if (!/^\d{7,8}$/.test(form.dni)) nuevosErrores.dni = 'DNI inválido (7 u 8 dígitos)';
-    if (!form.tipoContrato) nuevosErrores.tipoContrato = 'Seleccioná un tipo';
-    if (!form.fechaInicioContrato) nuevosErrores.fechaInicioContrato = 'Requerida';
-    if (!form.fechaVencimientoContrato) nuevosErrores.fechaVencimientoContrato = 'Requerida';
-    if (form.email && !/^\S+@\S+\.\S+$/.test(form.email)) nuevosErrores.email = 'Email inválido';
+    const e = {};
+    if (!form.nroExpediente.trim()) e.nroExpediente = 'Requerido';
+    if (!form.nombre.trim()) e.nombre = 'Requerido';
+    if (!form.apellido.trim()) e.apellido = 'Requerido';
+    if (!/^\d{7,8}$/.test(form.dni)) e.dni = 'DNI inválido (7 u 8 dígitos)';
+    if (!form.tipoContrato) e.tipoContrato = 'Seleccioná un tipo';
+    if (!form.secretaria.trim()) e.secretaria = 'Requerida';
+    if (!form.fechaInicioContrato) e.fechaInicioContrato = 'Requerida';
+    if (!form.fechaVencimientoContrato) e.fechaVencimientoContrato = 'Requerida';
+    if (form.email && !/^\S+@\S+\.\S+$/.test(form.email)) e.email = 'Email inválido';
+    if (form.importeMensual && isNaN(parseFloat(form.importeMensual))) e.importeMensual = 'Debe ser un número';
+    if (form.cantidadMeses && (isNaN(parseInt(form.cantidadMeses)) || parseInt(form.cantidadMeses) < 1)) e.cantidadMeses = 'Debe ser al menos 1';
     if (form.fechaInicioContrato && form.fechaVencimientoContrato) {
       if (new Date(form.fechaVencimientoContrato) <= new Date(form.fechaInicioContrato)) {
-        nuevosErrores.fechaVencimientoContrato = 'Debe ser posterior al inicio';
+        e.fechaVencimientoContrato = 'Debe ser posterior al inicio';
       }
     }
-    setErrores(nuevosErrores);
-    return Object.keys(nuevosErrores).length === 0;
+    setErrores(e);
+    return Object.keys(e).length === 0;
   };
 
   const handleSubmit = async (e) => {
@@ -108,6 +169,9 @@ export default function FormContrato() {
       if (!payload.fechaVencimientoSeguro) delete payload.fechaVencimientoSeguro;
       if (!payload.email) delete payload.email;
       if (!payload.telefono) delete payload.telefono;
+      if (payload.importeMensual) payload.importeMensual = parseFloat(payload.importeMensual);
+      if (payload.cantidadMeses) payload.cantidadMeses = parseInt(payload.cantidadMeses);
+      if (payload.importeTotal) payload.importeTotal = parseFloat(payload.importeTotal);
 
       if (esEdicion) {
         await axios.put(`/contratos/${id}`, payload);
@@ -126,6 +190,8 @@ export default function FormContrato() {
   };
 
   if (cargando) return <div className="loading-screen"><div className="spinner" /></div>;
+
+  const importeTotalCalculado = parseFloat(form.importeTotal) || 0;
 
   return (
     <div>
@@ -170,6 +236,18 @@ export default function FormContrato() {
                 >
                   <option value="">Seleccioná un tipo...</option>
                   {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </Field>
+
+              <Field label="Secretaría / Sector solicitante" name="secretaria" required error={errores.secretaria} fullWidth>
+                <select
+                  name="secretaria"
+                  value={form.secretaria}
+                  onChange={handleChange}
+                  style={errores.secretaria ? { borderColor: 'var(--danger)' } : {}}
+                >
+                  <option value="">Seleccioná una secretaría o sector...</option>
+                  {SECRETARIAS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </Field>
 
@@ -247,6 +325,76 @@ export default function FormContrato() {
                 />
               </Field>
             </div>
+          </div>
+
+          {/* Importes */}
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div className="card-header">
+              <span className="card-title">💰 Importes del Contrato</span>
+            </div>
+            <div className="form-grid-3">
+              <Field label="Importe Mensual ($)" name="importeMensual" error={errores.importeMensual}>
+                <input
+                  name="importeMensual"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.importeMensual}
+                  onChange={handleChange}
+                  placeholder="Ej: 150000"
+                  autoComplete="off"
+                  style={errores.importeMensual ? { borderColor: 'var(--danger)' } : {}}
+                />
+              </Field>
+
+              <Field label="Cantidad de Meses" name="cantidadMeses" error={errores.cantidadMeses}>
+                <input
+                  name="cantidadMeses"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={form.cantidadMeses}
+                  onChange={handleChange}
+                  placeholder="Ej: 6"
+                  autoComplete="off"
+                  style={errores.cantidadMeses ? { borderColor: 'var(--danger)' } : {}}
+                />
+              </Field>
+
+              <Field label="Importe Total ($)" name="importeTotal">
+                <input
+                  name="importeTotal"
+                  type="number"
+                  value={form.importeTotal}
+                  readOnly
+                  placeholder="Se calcula automáticamente"
+                  style={{
+                    background: 'var(--bg-hover)',
+                    cursor: 'not-allowed',
+                    fontWeight: 600,
+                    color: importeTotalCalculado > 0 ? 'var(--success)' : 'var(--text-muted)'
+                  }}
+                />
+              </Field>
+            </div>
+
+            {/* Resumen visual del importe */}
+            {importeTotalCalculado > 0 && (
+              <div style={{
+                marginTop: 16, padding: '14px 18px',
+                background: 'var(--success-light)', border: '1px solid rgba(34,197,94,0.3)',
+                borderRadius: 'var(--radius-sm)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+              }}>
+                <div style={{ fontSize: 13, color: 'var(--success)' }}>
+                  💵 <strong>{formatPesos(parseFloat(form.importeMensual))}</strong> x{' '}
+                  <strong>{form.cantidadMeses} mes{parseInt(form.cantidadMeses) !== 1 ? 'es' : ''}</strong>
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--success)' }}>
+                  Total: {formatPesos(importeTotalCalculado)}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Fechas */}

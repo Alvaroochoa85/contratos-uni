@@ -54,6 +54,13 @@ function FechaCelda({ fecha }) {
   );
 }
 
+function formatPesos(valor) {
+  if (!valor && valor !== 0) return '—';
+  return new Intl.NumberFormat('es-AR', {
+    style: 'currency', currency: 'ARS', minimumFractionDigits: 0
+  }).format(valor);
+}
+
 function FilaContrato({ c, puedeEditar, esAdmin, onEditar, onEliminar }) {
   return (
     <tr>
@@ -68,6 +75,25 @@ function FilaContrato({ c, puedeEditar, esAdmin, onEditar, onEliminar }) {
       </td>
       <td style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>{c.dni}</td>
       <td><span className="badge badge-purple">{c.tipoContrato}</span></td>
+      <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+        {c.secretaria || <span style={{ color: 'var(--text-muted)' }}>—</span>}
+      </td>
+      <td>
+        {c.importeTotal > 0 ? (
+          <div>
+            <div style={{ fontWeight: 600, color: 'var(--success)', fontSize: 13 }}>
+              {formatPesos(c.importeTotal)}
+            </div>
+            {c.cantidadMeses > 0 && (
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                {formatPesos(c.importeMensual)}/mes × {c.cantidadMeses}m
+              </div>
+            )}
+          </div>
+        ) : (
+          <span style={{ color: 'var(--text-muted)' }}>—</span>
+        )}
+      </td>
       <td><span className={`badge ${badgeEstado(c.estado)}`}>{c.estado}</span></td>
       <td><FechaCelda fecha={c.fechaVencimientoContrato} /></td>
       <td><FechaCelda fecha={c.fechaVencimientoSeguro} /></td>
@@ -186,8 +212,8 @@ export default function Contratos() {
       </div>
 
       <div className="page-content">
-        <div className="filters-bar">
-          <div className="search-input">
+        <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="search-input" style={{ flex: '1', minWidth: 220 }}>
             <span className="search-icon">🔍</span>
             <input
               type="text"
@@ -197,11 +223,11 @@ export default function Contratos() {
               autoComplete="off"
             />
           </div>
-          <select className="filter-select" value={tipo} onChange={e => { setTipo(e.target.value); setPage(1); }}>
+          <select style={{ width: 160, background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '10px 12px', color: 'var(--text-primary)', fontSize: 14 }} value={tipo} onChange={e => { setTipo(e.target.value); setPage(1); }}>
             <option value="">Todos los tipos</option>
             {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
-          <select className="filter-select" value={estado} onChange={e => { setEstado(e.target.value); setPage(1); }}>
+          <select style={{ width: 160, background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '10px 12px', color: 'var(--text-primary)', fontSize: 14 }} value={estado} onChange={e => { setEstado(e.target.value); setPage(1); }}>
             <option value="">Todos los estados</option>
             {ESTADOS.map(e => <option key={e} value={e}>{e}</option>)}
           </select>
@@ -232,6 +258,8 @@ export default function Contratos() {
                     <th>Apellido y Nombre</th>
                     <th>DNI</th>
                     <th>Tipo</th>
+                    <th>Secretaría / Sector</th>
+                    <th>Importe Total</th>
                     <th>Estado</th>
                     <th>Venc. Contrato</th>
                     <th>Venc. Seguro</th>

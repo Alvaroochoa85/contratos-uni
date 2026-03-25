@@ -10,7 +10,7 @@ export const useAuth = () => {
 };
 
 // Configurar axios
-axios.defaults.baseURL = '/api';
+axios.defaults.baseURL = 'http://localhost:5000/api';
 
 export const AuthProvider = ({ children }) => {
   const [usuario, setUsuario] = useState(null);
