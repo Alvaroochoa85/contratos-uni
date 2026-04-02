@@ -1,14 +1,13 @@
 const express = require('express');
-const { body, query, validationResult } = require('express-validator');
+const { body, validationResult } = require('express-validator');
 const Contrato = require('../models/Contrato');
 const { proteger, restringirA } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Todos los endpoints requieren autenticación
 router.use(proteger);
 
-// GET /api/contratos - Listar con filtros y paginación
+// GET /api/contratos
 router.get('/', async (req, res) => {
   try {
     const {
@@ -17,7 +16,6 @@ router.get('/', async (req, res) => {
     } = req.query;
 
     const filtro = {};
-
     if (buscar) {
       filtro.$or = [
         { nroExpediente: { $regex: buscar, $options: 'i' } },
@@ -51,20 +49,16 @@ router.get('/', async (req, res) => {
 router.get('/estadisticas', async (req, res) => {
   try {
     const hoy = new Date();
-    const en15dias = new Date(hoy.getTime() + 15 * 24 * 60 * 60 * 1000);
+    const en30dias = new Date(hoy.getTime() + 30 * 24 * 60 * 60 * 1000);
 
     const [total, porEstado, porTipo, proximosVencer] = await Promise.all([
       Contrato.countDocuments(),
-      Contrato.aggregate([
-        { $group: { _id: '$estado', count: { $sum: 1 } } }
-      ]),
-      Contrato.aggregate([
-        { $group: { _id: '$tipoContrato', count: { $sum: 1 } } }
-      ]),
+      Contrato.aggregate([{ $group: { _id: '$estado', count: { $sum: 1 } } }]),
+      Contrato.aggregate([{ $group: { _id: '$tipoContrato', count: { $sum: 1 } } }]),
       Contrato.countDocuments({
         $or: [
-          { fechaVencimientoContrato: { $gte: hoy, $lte: en15dias } },
-          { fechaVencimientoSeguro: { $gte: hoy, $lte: en15dias } }
+          { fechaVencimientoContrato: { $gte: hoy, $lte: en30dias } },
+          { fechaVencimientoSeguro: { $gte: hoy, $lte: en30dias } }
         ]
       })
     ]);
@@ -88,7 +82,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Validaciones comunes
+// Validaciones
 const validarContrato = [
   body('nroExpediente').trim().notEmpty().withMessage('Número de expediente requerido'),
   body('nombre').trim().notEmpty().withMessage('Nombre requerido'),
@@ -104,7 +98,7 @@ const validarContrato = [
   body('fechaVencimientoContrato').isISO8601().withMessage('Fecha de vencimiento inválida')
 ];
 
-// Función para limpiar y convertir los campos del body
+// Parsear y convertir campos
 function parsearCampos(body) {
   const datos = {
     nroExpediente: body.nroExpediente,
@@ -116,16 +110,12 @@ function parsearCampos(body) {
     fechaVencimientoContrato: body.fechaVencimientoContrato,
   };
 
-  // Campos opcionales de texto
   if (body.telefono) datos.telefono = body.telefono;
   if (body.email) datos.email = body.email;
   if (body.secretaria) datos.secretaria = body.secretaria;
   if (body.descripcion) datos.descripcion = body.descripcion;
-
-  // Fecha seguro opcional
   if (body.fechaVencimientoSeguro) datos.fechaVencimientoSeguro = body.fechaVencimientoSeguro;
 
-  // Campos numéricos — convertir explícitamente
   const mensual = parseFloat(body.importeMensual);
   const meses = parseInt(body.cantidadMeses);
   const total = parseFloat(body.importeTotal);
@@ -134,7 +124,6 @@ function parsearCampos(body) {
   if (!isNaN(meses) && meses >= 1) datos.cantidadMeses = meses;
   if (!isNaN(total) && total >= 0) datos.importeTotal = total;
 
-  // Si no viene importe total pero sí mensual y meses, calcularlo
   if (!datos.importeTotal && datos.importeMensual && datos.cantidadMeses) {
     datos.importeTotal = datos.importeMensual * datos.cantidadMeses;
   }
@@ -142,25 +131,45 @@ function parsearCampos(body) {
   return datos;
 }
 
+// Calcular estado según fecha — ahora usa 30 días
+function calcularEstado(fechaVencimiento) {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const venc = new Date(fechaVencimiento);
+  venc.setHours(0, 0, 0, 0);
+  const diff = Math.ceil((venc - hoy) / (1000 * 60 * 60 * 24));
+  if (diff < 0) return 'Vencido';
+  if (diff <= 30) return 'Por Vencer';
+  return 'Vigente';
+}
+
 // POST /api/contratos
 router.post('/', restringirA('admin', 'operador'), validarContrato, async (req, res) => {
+  console.log('📥 POST /contratos - body recibido:', JSON.stringify(req.body, null, 2));
+
   const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  if (!errors.isEmpty()) {
+    console.log('❌ Errores de validación:', errors.array());
+    return res.status(400).json({ errors: errors.array() });
+  }
 
   try {
     const datos = parsearCampos(req.body);
+    console.log('📋 Datos parseados:', JSON.stringify(datos, null, 2));
+
     const contrato = await Contrato.create({
       ...datos,
       creadoPor: req.usuario._id,
       estado: calcularEstado(req.body.fechaVencimientoContrato)
     });
 
+    console.log('✅ Contrato creado:', contrato._id);
     res.status(201).json({ contrato, mensaje: 'Contrato creado exitosamente.' });
   } catch (err) {
     if (err.code === 11000) {
       return res.status(400).json({ error: 'El número de expediente ya existe.' });
     }
-    console.error('Error al crear contrato:', err.message);
+    console.error('❌ Error al crear contrato:', err.name, err.message);
     if (err.name === 'ValidationError') {
       const campos = Object.keys(err.errors).map(k => `${k}: ${err.errors[k].message}`);
       return res.status(400).json({ error: 'Error de validación: ' + campos.join(' | ') });
@@ -183,7 +192,7 @@ router.put('/:id', restringirA('admin', 'operador'), validarContrato, async (req
         modificadoPor: req.usuario._id,
         estado: calcularEstado(req.body.fechaVencimientoContrato)
       },
-      { new: true, runValidators: false } // runValidators: false para evitar conflictos con campos opcionales
+      { new: true, runValidators: false }
     );
     if (!contrato) return res.status(404).json({ error: 'Contrato no encontrado.' });
     res.json({ contrato, mensaje: 'Contrato actualizado exitosamente.' });
@@ -191,7 +200,7 @@ router.put('/:id', restringirA('admin', 'operador'), validarContrato, async (req
     if (err.code === 11000) {
       return res.status(400).json({ error: 'El número de expediente ya existe.' });
     }
-    console.error('Error al actualizar contrato:', err.message);
+    console.error('❌ Error al actualizar contrato:', err.name, err.message);
     if (err.name === 'ValidationError') {
       const campos = Object.keys(err.errors).map(k => `${k}: ${err.errors[k].message}`);
       return res.status(400).json({ error: 'Error de validación: ' + campos.join(' | ') });
@@ -200,7 +209,7 @@ router.put('/:id', restringirA('admin', 'operador'), validarContrato, async (req
   }
 });
 
-// DELETE /api/contratos/:id (solo admin)
+// DELETE /api/contratos/:id
 router.delete('/:id', restringirA('admin'), async (req, res) => {
   try {
     const contrato = await Contrato.findByIdAndDelete(req.params.id);
@@ -210,14 +219,5 @@ router.delete('/:id', restringirA('admin'), async (req, res) => {
     res.status(500).json({ error: 'Error al eliminar el contrato.' });
   }
 });
-
-function calcularEstado(fechaVencimiento) {
-  const hoy = new Date();
-  const venc = new Date(fechaVencimiento);
-  const diff = (venc - hoy) / (1000 * 60 * 60 * 24);
-  if (diff < 0) return 'Vencido';
-  if (diff <= 15) return 'Por Vencer';
-  return 'Vigente';
-}
 
 module.exports = router;

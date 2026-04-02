@@ -5,7 +5,7 @@ const { proteger } = require('../middleware/auth');
 const router = express.Router();
 router.use(proteger);
 
-// GET /api/alertas - Obtener alertas activas
+// GET /api/alertas
 router.get('/', async (req, res) => {
   try {
     const alertas = await Alerta.find({ leida: false })
@@ -21,6 +21,19 @@ router.get('/', async (req, res) => {
   }
 });
 
+// PUT /api/alertas/leer-todas
+router.put('/leer-todas', async (req, res) => {
+  try {
+    await Alerta.updateMany(
+      { leida: false },
+      { leida: true, leidaPor: req.usuario._id, fechaLeida: new Date() }
+    );
+    res.json({ mensaje: 'Todas las alertas marcadas como leídas.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al actualizar alertas.' });
+  }
+});
+
 // PUT /api/alertas/:id/leer
 router.put('/:id/leer', async (req, res) => {
   try {
@@ -33,19 +46,6 @@ router.put('/:id/leer', async (req, res) => {
     res.json({ alerta, mensaje: 'Alerta marcada como leída.' });
   } catch (err) {
     res.status(500).json({ error: 'Error al actualizar alerta.' });
-  }
-});
-
-// PUT /api/alertas/leer-todas
-router.put('/leer-todas', async (req, res) => {
-  try {
-    await Alerta.updateMany(
-      { leida: false },
-      { leida: true, leidaPor: req.usuario._id, fechaLeida: new Date() }
-    );
-    res.json({ mensaje: 'Todas las alertas marcadas como leídas.' });
-  } catch (err) {
-    res.status(500).json({ error: 'Error al actualizar alertas.' });
   }
 });
 

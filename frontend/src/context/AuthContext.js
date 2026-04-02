@@ -9,8 +9,8 @@ export const useAuth = () => {
   return context;
 };
 
-// Configurar axios
-axios.defaults.baseURL = 'http://localhost:5000/api';
+// Lee la URL del .env generado por setup.js, o usa localhost por defecto
+axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 export const AuthProvider = ({ children }) => {
   const [usuario, setUsuario] = useState(null);

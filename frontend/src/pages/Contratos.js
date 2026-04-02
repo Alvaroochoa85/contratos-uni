@@ -9,7 +9,7 @@ import { es } from 'date-fns/locale';
 const TIPOS = [
   'Docente','No Docente','Administrativo','Abogado','Contador',
   'Alumno Tutor','Empresa - Limpieza','Empresa - Seguridad',
-  'Empresa - Mantenimiento','Empresa - Tecnología','Empresa - Otro','Otro'
+  'Empresa - Mantenimiento','Tecnología','Otro'
 ];
 
 const ESTADOS = ['Vigente','Por Vencer','Vencido','Renovado','Cancelado'];
