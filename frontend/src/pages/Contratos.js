@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -9,7 +9,7 @@ import { es } from 'date-fns/locale';
 const TIPOS = [
   'Docente','No Docente','Administrativo','Abogado','Contador',
   'Alumno Tutor','Empresa - Limpieza','Empresa - Seguridad',
-  'Empresa - Mantenimiento','Tecnología','Otro'
+  'Empresa - Mantenimiento','Empresa - Tecnología','Empresa - Otro','Otro'
 ];
 
 const ESTADOS = ['Vigente','Por Vencer','Vencido','Renovado','Cancelado'];
@@ -29,18 +29,25 @@ function diasHasta(fecha) {
   if (!fecha) return null;
   return Math.ceil((new Date(fecha) - new Date()) / (1000 * 60 * 60 * 24));
 }
-
 function FechaCelda({ fecha }) {
   if (!fecha) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
+  
+  // ✅ Usar UTC para evitar desfase de zona horaria
+  const d = new Date(fecha);
+  const dia = String(d.getUTCDate()).padStart(2, '0');
+  const mes = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const año = d.getUTCFullYear();
+  const formatted = `${dia}/${mes}/${año}`;
+  
   const dias = diasHasta(fecha);
-  const formatted = format(new Date(fecha), 'dd/MM/yyyy', { locale: es });
   let color = 'var(--text-primary)';
   if (dias !== null && dias <= 0) color = 'var(--danger)';
-  else if (dias !== null && dias <= 15) color = 'var(--warning)';
+  else if (dias !== null && dias <= 30) color = 'var(--warning)';
+  
   return (
     <span style={{ color, fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>
       {formatted}
-      {dias !== null && dias <= 15 && dias > 0 && (
+      {dias !== null && dias <= 30 && dias > 0 && (
         <span style={{ marginLeft: 6, fontSize: 11, background: 'var(--warning-light)', color: 'var(--warning)', padding: '1px 6px', borderRadius: 8 }}>
           {dias}d
         </span>
@@ -114,6 +121,7 @@ function FilaContrato({ c, puedeEditar, esAdmin, onEditar, onEliminar }) {
 export default function Contratos() {
   const { puedeEditar, esAdmin } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [contratos, setContratos] = useState([]);
   const [total, setTotal] = useState(0);
@@ -157,7 +165,15 @@ export default function Contratos() {
     }
   }, [page, buscarQuery, tipo, estado]);
 
-  useEffect(() => { fetchContratos(); }, [fetchContratos]);
+  // ✅ Se recarga cuando cambia location.state (al volver de editar/crear)
+    useEffect(() => {
+    fetchContratos();
+  }, [fetchContratos]);
+
+  // ✅ Fuerza recarga cada vez que la página se monta
+  useEffect(() => {
+    fetchContratos();
+  }, []);  // eslint-disable-line
 
   const handleLimpiar = () => {
     setBuscarInput('');
@@ -179,10 +195,12 @@ export default function Contratos() {
   };
 
   const exportarCSV = () => {
-    const headers = ['Expediente','Apellido','Nombre','DNI','Teléfono','Email','Tipo','Estado','Inicio','Venc. Contrato','Venc. Seguro'];
+    const headers = ['Expediente','Apellido','Nombre','DNI','Teléfono','Email','Tipo','Secretaría','Estado','Importe Mensual','Meses','Importe Total','Inicio','Venc. Contrato','Venc. Seguro'];
     const rows = contratos.map(c => [
       c.nroExpediente, c.apellido, c.nombre, c.dni,
-      c.telefono || '', c.email || '', c.tipoContrato, c.estado,
+      c.telefono || '', c.email || '', c.tipoContrato,
+      c.secretaria || '', c.estado,
+      c.importeMensual || '', c.cantidadMeses || '', c.importeTotal || '',
       c.fechaInicioContrato ? format(new Date(c.fechaInicioContrato), 'dd/MM/yyyy') : '',
       c.fechaVencimientoContrato ? format(new Date(c.fechaVencimientoContrato), 'dd/MM/yyyy') : '',
       c.fechaVencimientoSeguro ? format(new Date(c.fechaVencimientoSeguro), 'dd/MM/yyyy') : ''

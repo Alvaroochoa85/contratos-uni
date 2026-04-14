@@ -7,39 +7,26 @@ import { format } from 'date-fns';
 const TIPOS = [
   'Docente','No Docente','Administrativo','Abogado','Contador',
   'Alumno Tutor','Empresa - Limpieza','Empresa - Seguridad',
-  'Empresa - Mantenimiento','Empresa - Tecnología','Empresa - Otro','Gimnacia Laboral','Entrenador fisico deportista','Otro'
+  'Empresa - Mantenimiento','Empresa - Tecnología','Empresa - Otro','Otro'
 ];
 
 const SECRETARIAS = [
   'Rectorado',
-  'Vicerector',
-  'Secretaria General',
   'Secretaría Académica',
-  'Secretaría de Hacienda y Administracion',
+  'Secretaría Administrativa',
   'Secretaría de Extensión',
+  'Secretaría de Investigación',
   'Secretaría de Bienestar Estudiantil',
-  'Secretaría de Infraestructura',
-  'Secretaria de Ciencia y Tecnica',
-  'Secretaria de Innovacion y Arcticulacion Tecnologica',
-  'Secretaria de Posgrado',
-  'Secretaria de Comunicacion Estrategica',
-  'Tesorería',
-  'Asesoria Legal y Técnica',
-  'Dirección de Personal',
+  'Secretaría de Obras y Servicios',
+  'Secretaría Legal y Técnica',
+  'Dirección de Recursos Humanos',
+  'Dirección de Informática',
+  'Dirección de Contaduría',
+  'Dirección de Tesorería',
   'Dirección de Compras',
-  'Departamento de Pesupuesto y Liquidacion de Gastos',
-  'Departamento de Liquidacion de Haberes',
-  'Departamento de Contrataciones',
-  'Departamento de Compras',
-  'Departamente de Ciencias Basicas',
-  'Departamento de Ciencias Aplicadas y Tecnologicas',
+  'Departamento de Mantenimiento',
   'Biblioteca',
-  'Escuela de Ciencia de la Salud',
-  'Escuela de Gestion de Empresas y Economia',
-  'Escuela de Ciencias Sociales y Educacion',
-  'Escuela de Ingenieria y Ciencias Ambientales',
-  'Escuela de Medicina',
-  'UGR'
+  'Otro'
 ];
 
 const INITIAL = {
@@ -52,7 +39,11 @@ const INITIAL = {
 
 function formatDateInput(dateStr) {
   if (!dateStr) return '';
-  return format(new Date(dateStr), 'yyyy-MM-dd');
+  const fecha = new Date(dateStr);
+  const año = fecha.getUTCFullYear();
+  const mes = String(fecha.getUTCMonth() + 1).padStart(2, '0');
+  const dia = String(fecha.getUTCDate()).padStart(2, '0');
+  return `${año}-${mes}-${dia}`;
 }
 
 function formatPesos(valor) {
@@ -62,7 +53,6 @@ function formatPesos(valor) {
   }).format(valor);
 }
 
-// ✅ Field definido FUERA del componente principal
 function Field({ label, name, required, error, fullWidth, children }) {
   return (
     <div className={`form-group ${fullWidth ? 'full-width' : ''}`}>
@@ -118,20 +108,15 @@ export default function FormContrato() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
     setForm(prev => {
       const nuevo = { ...prev, [name]: value };
-
-      // Calcular importe total automáticamente
       if (name === 'importeMensual' || name === 'cantidadMeses') {
         const mensual = parseFloat(name === 'importeMensual' ? value : prev.importeMensual) || 0;
         const meses = parseFloat(name === 'cantidadMeses' ? value : prev.cantidadMeses) || 0;
         nuevo.importeTotal = mensual > 0 && meses > 0 ? (mensual * meses).toFixed(2) : '';
       }
-
       return nuevo;
     });
-
     if (errores[name]) setErrores(prev => ({ ...prev, [name]: '' }));
   };
 
@@ -142,7 +127,6 @@ export default function FormContrato() {
     if (!form.apellido.trim()) e.apellido = 'Requerido';
     if (!/^\d{7,8}$/.test(form.dni)) e.dni = 'DNI inválido (7 u 8 dígitos)';
     if (!form.tipoContrato) e.tipoContrato = 'Seleccioná un tipo';
-    if (!form.secretaria.trim()) e.secretaria = 'Requerida';
     if (!form.fechaInicioContrato) e.fechaInicioContrato = 'Requerida';
     if (!form.fechaVencimientoContrato) e.fechaVencimientoContrato = 'Requerida';
     if (form.email && !/^\S+@\S+\.\S+$/.test(form.email)) e.email = 'Email inválido';
@@ -180,7 +164,13 @@ export default function FormContrato() {
         await axios.post('/contratos', payload);
         toast.success('Contrato creado correctamente');
       }
-      navigate('/contratos');
+
+      // ✅ Navegar con state para forzar recarga en la lista
+    // Reemplazá esto:
+navigate('/contratos', { state: { ts: Date.now() } });
+
+// Por esto:
+window.location.href = '/contratos';
     } catch (err) {
       const msg = err.response?.data?.error || err.response?.data?.errors?.[0]?.msg || 'Error al guardar';
       toast.error(msg);
@@ -239,12 +229,11 @@ export default function FormContrato() {
                 </select>
               </Field>
 
-              <Field label="Secretaría / Sector solicitante" name="secretaria" required error={errores.secretaria} fullWidth>
+              <Field label="Secretaría / Sector solicitante" name="secretaria" fullWidth>
                 <select
                   name="secretaria"
                   value={form.secretaria}
                   onChange={handleChange}
-                  style={errores.secretaria ? { borderColor: 'var(--danger)' } : {}}
                 >
                   <option value="">Seleccioná una secretaría o sector...</option>
                   {SECRETARIAS.map(s => <option key={s} value={s}>{s}</option>)}
@@ -378,7 +367,6 @@ export default function FormContrato() {
               </Field>
             </div>
 
-            {/* Resumen visual del importe */}
             {importeTotalCalculado > 0 && (
               <div style={{
                 marginTop: 16, padding: '14px 18px',
@@ -439,7 +427,7 @@ export default function FormContrato() {
                 background: 'var(--accent-light)', border: '1px solid rgba(59,130,246,0.3)',
                 fontSize: 13, color: 'var(--accent)'
               }}>
-                🔔 Se generarán alertas automáticas <strong>15 días antes</strong> del vencimiento
+                🔔 Se generarán alertas automáticas <strong>30 días antes</strong> del vencimiento
                 {form.fechaVencimientoSeguro ? ' del contrato y del seguro' : ' del contrato'}.
               </div>
             )}

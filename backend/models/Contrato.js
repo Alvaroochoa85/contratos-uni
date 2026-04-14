@@ -99,7 +99,6 @@ const contratoSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-contratoSchema.index({ nroExpediente: 1 });
 contratoSchema.index({ apellido: 1, nombre: 1 });
 contratoSchema.index({ dni: 1 });
 contratoSchema.index({ fechaVencimientoContrato: 1 });

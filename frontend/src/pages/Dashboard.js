@@ -20,7 +20,7 @@ function calcularEstadoReal(fechaVencimiento) {
   venc.setHours(0, 0, 0, 0);
   const diff = Math.ceil((venc - hoy) / (1000 * 60 * 60 * 24));
   if (diff < 0) return 'Vencido';
-  if (diff <= 15) return 'Por Vencer';
+  if (diff <= 30) return 'Por Vencer';  // ← ¿dice 30?
   return 'Vigente';
 }
 
@@ -76,7 +76,7 @@ export default function Dashboard() {
           proximosVencer: alertasRes.data.total
         });
 
-        setAlertas(alertasRes.data.alertas.slice(0, 5));
+        setAlertas(alertasRes.data.alertas.slice(0, 20));
       } catch (err) {
         console.error(err);
       } finally {

@@ -10,8 +10,7 @@ export const useAuth = () => {
 };
 
 // Lee la URL del .env generado por setup.js, o usa localhost por defecto
-axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-
+axios.defaults.baseURL = 'http://192.168.1.16:5000/api';
 export const AuthProvider = ({ children }) => {
   const [usuario, setUsuario] = useState(null);
   const [cargando, setCargando] = useState(true);
